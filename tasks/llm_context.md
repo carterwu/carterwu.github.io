@@ -1,0 +1,3 @@
+LLM get a limited context window (e.g. 128k tokens), so we need to be selective about what to feed it. In general, feeding patch diffs + selectively chosen files changed in those diffs is more efficient than feeding full files after each commit, as the latter can quickly balloon the token count due to repeated inclusion of unchanged code.
+
+As LLM developing, the context window is expected to grow, but it’s still important to be mindful of what to include in the input to ensure that the model can effectively analyze the code changes without being overwhelmed by irrelevant information. Excluding vendor files, lockfiles, generated code, and large binary files can help keep the input focused and manageable.
