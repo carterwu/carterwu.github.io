@@ -193,6 +193,12 @@ Optionally use the **GraphQL API** for richer PR/review metadata and fewer round
 
 ---
 
+## Evaluation Standard
+
+> **[Engineer Level Evaluation Standard](https://gitee.com/zgcai/oscanner/blob/main/engineer_level.md)** — the rubric used to assess an engineer's capability based on their code contributions.
+
+---
+
 ## Sources
 
 - [REST API endpoints for commits - GitHub Docs](https://docs.github.com/en/rest/commits/commits)
