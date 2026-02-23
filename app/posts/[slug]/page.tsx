@@ -1,6 +1,8 @@
 import { getPostBySlug, getAllPosts } from '@/posts';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface Props {
   params: Promise<{
@@ -52,11 +54,9 @@ export default async function PostPage({ params }: Props) {
           </header>
 
           <div className="prose prose-lg max-w-none">
-            {post.content.split('\n').map((paragraph, index) => (
-              <p key={index} className="mb-4 text-gray-700">
-                {paragraph}
-              </p>
-            ))}
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {post.content}
+            </ReactMarkdown>
           </div>
         </article>
       </main>
