@@ -1,5 +1,6 @@
 import { post as helloGithub } from './hello-github';
 import { post as evalEngineering } from './eval-engeering';
+import { post as gitConcepts } from './git-concepts';
 import type { BlogPost } from './hello-github';
 
 export type { BlogPost };
@@ -7,6 +8,7 @@ export type { BlogPost };
 export const allPosts: BlogPost[] = [
   helloGithub,
   evalEngineering,
+  gitConcepts,
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
