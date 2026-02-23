@@ -1,0 +1,91 @@
+---
+layout: default
+title: Git概念：Author vs Committer vs Contributor
+---
+
+<h2>{{ page.title }}</h2>
+<p>{{ page.date | date_to_string }}</p>
+
+<hr>
+
+<h3>Author vs Committer</h3>
+
+<p><strong>Author</strong></p>
+<ul>
+  <li>The person who originally <strong>wrote the code/changes</strong></li>
+  <li>The one who created the content</li>
+  <li>Includes: name, email, and timestamp of when the changes were made</li>
+</ul>
+
+<p><strong>Committer</strong></p>
+<ul>
+  <li>The person who <strong>applied/committed</strong> the changes to the repository</li>
+  <li>The one who recorded the commit</li>
+  <li>Includes: name, email, and timestamp of when it was committed</li>
+</ul>
+
+<h3>When They Differ</h3>
+
+<p>In most cases, author and committer are the <strong>same person</strong>. But they differ in scenarios like:</p>
+<ol>
+  <li><strong>Patch workflows</strong>: Someone emails a patch, another person applies it</li>
+  <li><strong>Cherry-picking</strong>: You cherry-pick someone else's commit to another branch</li>
+  <li><strong>Rebasing</strong>: The committer date/info updates, but author stays original</li>
+  <li><strong>Pull requests</strong>: A maintainer merges/rebases someone else's PR</li>
+  <li><strong>Applying patches</strong>: Using <code>git am</code> to apply patches from email</li>
+</ol>
+
+<h3>Example Scenario</h3>
+
+<pre><code>Author:     Alice &lt;alice@example.com&gt;  (wrote the code on Monday)
+Committer:  Bob &lt;bob@example.com&gt;      (applied it on Tuesday)</code></pre>
+
+<p>This would happen if Alice submitted a patch and Bob (the maintainer) committed it to the repository.</p>
+
+<hr>
+
+<h3>commit.author vs author (GitHub API)</h3>
+
+<p>In the GitHub API response for a commit, there are two different "author" fields:</p>
+
+<p><strong><code>commit.author</code></strong> &mdash; Git commit metadata:</p>
+<pre><code>"commit": {
+  "author": {
+    "name": "lexicalmathical",
+    "email": "lexicalmathical@gmail.com",
+    "date": "2025-11-02T10:34:22Z"
+  }
+}</code></pre>
+<ul>
+  <li>This is the <strong>Git-level</strong> author information</li>
+  <li>Contains: name, email, and date from the raw Git commit</li>
+</ul>
+
+<p><strong><code>author</code></strong> (top-level) &mdash; GitHub user account:</p>
+<pre><code>"author": null</code></pre>
+<ul>
+  <li>This is the <strong>GitHub user account</strong> object</li>
+  <li><code>null</code> means the email is not associated with a GitHub account</li>
+  <li>If linked, it would contain <code>login</code>, <code>id</code>, <code>avatar_url</code>, etc.</li>
+</ul>
+
+<p>So <code>commit.author</code> is always the Git metadata, while <code>author</code> is the GitHub user association (which can be <code>null</code>).</p>
+
+<hr>
+
+<h3>Contributor (GitHub/Platform Concept)</h3>
+
+<ul>
+  <li><strong>Anyone who has commits merged into the repository</strong></li>
+  <li>This is a GitHub UI aggregation, not a Git concept (it uses <code>commit.author</code> attribution)</li>
+  <li>Shown on the "Contributors" page</li>
+  <li>Includes statistics like:
+    <ul>
+      <li>Total commits</li>
+      <li>Lines added (++)</li>
+      <li>Lines deleted (--)</li>
+      <li>Contribution timeline</li>
+    </ul>
+  </li>
+  <li>Note: Gitee does not count contributors the same way in their statistics</li>
+</ul>
