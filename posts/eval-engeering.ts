@@ -1,4 +1,4 @@
-import type { BlogPost } from './hello-github';
+import type { BlogPost } from './index';
 
 export const post: BlogPost = {
   slug: 'eval-engineering',
@@ -8,7 +8,7 @@ export const post: BlogPost = {
   content: `
 # Evaluator Backend: Architecture & Design Patterns
 
-Deep dive into the design logic of the Engineer Skill Evaluator backend - a plugin-based evaluation system with intelligent caching, incremental sync, and multi-alias identity aggregation.
+Deep dive into the design logic of the Engineer Skill Evaluator backend - a plugin-based evaluation system with intelligent caching, incremental sync, and multi-alias identity aggregation...
 
 ## Overview
 

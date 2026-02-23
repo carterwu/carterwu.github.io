@@ -1,4 +1,4 @@
-import type { BlogPost } from './hello-github';
+import type { BlogPost } from './index';
 
 export const post: BlogPost = {
   slug: 'git-concepts',

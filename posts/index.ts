@@ -1,14 +1,19 @@
-import { post as helloGithub } from './hello-github';
 import { post as evalEngineering } from './eval-engeering';
 import { post as gitConcepts } from './git-concepts';
-import type { BlogPost } from './hello-github';
+import { post as evalDataFetching } from './eval-data-fetching';
 
-export type { BlogPost };
+export interface BlogPost {
+  slug: string;
+  title: string;
+  content: string;
+  date: string;
+  author: string;
+}
 
 export const allPosts: BlogPost[] = [
-  helloGithub,
   evalEngineering,
   gitConcepts,
+  evalDataFetching,
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
