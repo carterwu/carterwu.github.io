@@ -1,6 +1,7 @@
 import { post as evalEngineering } from './eval-engeering';
 import { post as gitConcepts } from './git-concepts';
 import { post as evalDataFetching } from './eval-data-fetching';
+import { post as evalBaselineTest } from './eval-baseline-test';
 
 export interface BlogPost {
   slug: string;
@@ -14,6 +15,7 @@ export const allPosts: BlogPost[] = [
   evalEngineering,
   gitConcepts,
   evalDataFetching,
+  evalBaselineTest,
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
