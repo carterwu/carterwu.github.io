@@ -1,11 +1,3 @@
-import type { BlogPost } from './index';
-
-export const post: BlogPost = {
-  slug: 'eval-engineering',
-  title: 'Evaluator Backend: Architecture & Design Patterns',
-  date: '2026-02-14',
-  author: 'Carter Wu',
-  content: `
 # Evaluator Backend: Architecture & Design Patterns
 
 Deep dive into the design logic of the Engineer Skill Evaluator backend - a plugin-based evaluation system with intelligent caching, incremental sync, and multi-alias identity aggregation...
@@ -18,7 +10,7 @@ The Engineer Skill Evaluator is a comprehensive backend system built with FastAP
 
 ### Core Components
 
-\`\`\`
+```
 evaluator/
 ├── server.py              # FastAPI entry point (189 lines)
 ├── core.py                # Legacy evaluation engine (297 lines)
@@ -48,11 +40,11 @@ evaluator/
 └── schemas/               # Pydantic models
     ├── evaluation.py      # API response schemas (129 lines)
     └── trajectory.py      # Trajectory schemas
-\`\`\`
+```
 
 ### Request Flow
 
-\`\`\`
+```
 ┌─────────────────────────────────────────────────────────┐
 │  Client Request                                         │
 │  POST /api/evaluate/owner/repo/author                   │
@@ -105,7 +97,7 @@ evaluator/
 │  - Cache evaluation result (JSON file)                 │
 │  - Return standardized API response                    │
 └─────────────────────────────────────────────────────────┘
-\`\`\`
+```
 
 ## Key Design Patterns
 
@@ -149,13 +141,13 @@ The system implements intelligent caching at three levels to minimize API calls 
 The system tracks repository sync state to only fetch new commits, dramatically reducing processing time and API usage.
 
 **Sync State Format (sync_state.json):**
-\`\`\`json
+```json
 {
   "last_commit_sha": "abc123def456...",
   "last_commit_date": "2026-01-20T10:30:45Z",
   "last_synced_at": "2026-01-22T15:20:10Z"
 }
-\`\`\`
+```
 
 **Incremental Evaluation Logic:**
 1. Load all commits for repository
@@ -194,7 +186,7 @@ For large commit histories, the system uses chunked evaluation with linear (sequ
 
 **Algorithm: Linear Chunked Evaluation**
 
-\`\`\`
+```
 Input: 100 commits (newest first)
 Max tokens per chunk: 190,000
 
@@ -227,7 +219,7 @@ Step 3: Synthesize final evaluation
   - Growth trajectory analysis
   - Key strengths/weaknesses
   - Contextual insights across all chunks
-\`\`\`
+```
 
 **Why Linear Instead of Parallel?**
 - ✅ Better accuracy - LLM sees progression over time
@@ -309,10 +301,10 @@ The server can optionally serve a bundled Next.js dashboard from dashboard_dist/
 ## Data Flow Example: Evaluating an Author
 
 **Request:**
-\`\`\`
+```
 POST /api/evaluate/facebook/react/Dan%20Abramov?plugin_id=zgc_simple&use_cache=true
 Body: {"aliases": ["Dan Abramov", "gaearon"]}
-\`\`\`
+```
 
 **Flow:**
 1. Middleware: TrailingSlashMiddleware → CORSMiddleware
@@ -451,5 +443,3 @@ The Engineer Skill Evaluator backend demonstrates how thoughtful architecture ca
 - Schema-driven APIs provide type safety and documentation
 
 The result is a robust, scalable backend that can evaluate thousands of developers across hundreds of repositories while maintaining sub-second response times and minimal API costs.
-  `.trim()
-};
