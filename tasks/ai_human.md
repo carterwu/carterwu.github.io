@@ -86,7 +86,7 @@ Tool-Agnostic Signal Extraction (existing pipeline)
   ├── Fix-cycle depth
   ├── Test intent
   ├── Curation score
-  ├── Scope ratio
+  ├── Commit intent score
   └── First-push CI pass rate
         │
 Stratified Scoring

@@ -269,24 +269,34 @@ GET /repos/{owner}/{repo}/pulls/{number}/events
 
 **Evaluation mode:** Read-only (deterministic).
 
-### 4. Scope Control (deterministic, no LLM needed)
+### 4. Commit Intent Analysis (LLM-assisted)
 
 Seniors scope their prompts and commits tightly. Juniors accept bulk AI output that mixes concerns.
 
-**How to measure:** Per commit, compute:
-- `files_changed` — number of files in the diff
-- `concerns_touched` — number of distinct top-level directories (proxy for concerns/modules)
-- `scope_ratio = files_changed / concerns_touched`
+**How to measure:** Per commit, use an LLM to analyze the commit message and diff, returning:
+- `intent_count` — number of distinct purposes detected in the commit
+- `message_quality` — 0.0–1.0 score for how coherent and descriptive the commit message is
+- `intents` — list of distinct intents identified (e.g. "fix auth token refresh", "update avatar styling")
 
-| Scope ratio | Interpretation |
-|---|---|
-| ~1.0 | Focused — one concern per commit |
-| 2.0–3.0 | Moderate — feature + tests in same commit |
-| 5.0+ | Kitchen-sink — multiple concerns mixed together |
+```json
+{
+  "intent_count": 2,
+  "message_quality": 0.3,
+  "intents": ["fix auth token refresh", "update avatar styling"],
+  "reason": "Two unrelated concerns in one commit, message is vague"
+}
+```
 
-Also check: does a single commit contain both feature code AND unrelated refactoring, formatting, or dependency changes? AI agents frequently produce these mixed commits, and juniors ship them as-is.
+| Intent count | Message quality | Interpretation |
+|---|---|---|
+| 1 | > 0.7 | Focused — single clear purpose, well-described |
+| 1–2 | 0.4–0.7 | Moderate — mostly focused, message could be clearer |
+| 3+ | any | Kitchen-sink — multiple concerns mixed together |
+| any | < 0.3 | Nonsense — "wip", "fix", "asdf", or empty message |
 
-**Evaluation mode:** Read-only (deterministic). Makes "atomic vs. kitchen-sink commits" into a measurable metric.
+This catches cases directory-counting misses: a commit touching 1 file but doing 3 unrelated things, or 10 files for one well-described fix. Nonsensical commit messages are penalized regardless of diff structure.
+
+**Evaluation mode:** LLM-assisted. Replaces the crude directory-counting heuristic with semantic intent detection.
 
 ### 5. First-Push CI Pass Rate (deterministic, no LLM needed)
 
@@ -315,7 +325,7 @@ Signal Extraction (deterministic + targeted LLM)
   ├── Fix-cycle depth         → number
   ├── Test intent score       → categorical (happy-path / boundary / failure-mode)
   ├── Curation score          → ratio
-  ├── Scope ratio             → number per commit, averaged
+  ├── Commit intent score     → intent_count + message_quality per commit
   └── First-push pass rate    → percentage
         │
 LLM Judgment (structured prompt with pre-computed signals)
@@ -335,7 +345,7 @@ Run the full signal extraction pipeline against `eval_test_junior` and `eval_tes
 | Fix-cycle depth | ≥ 2.5 | ≤ 1.0 |
 | Test intent | Happy-path or no tests | Boundary + failure modes |
 | Curation score | ~0 | > 0.1 |
-| Scope ratio | > 4.0 | < 2.5 |
+| Commit intent | intent_count > 3, message_quality < 0.3 | intent_count = 1, message_quality > 0.7 |
 | First-push CI pass rate | < 50% | > 80% |
 
 If these signals don't clearly separate the two baselines, the analyzers need tuning before running against real repos.
