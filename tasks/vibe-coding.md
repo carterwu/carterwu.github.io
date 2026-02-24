@@ -8,11 +8,41 @@ The core shift: the developer's role moves from **writing** code to **curating a
 
 ---
 
-## The Challenge: Read-Only Evaluation
+## Part 1: Read-Only (LLM) Evaluation
 
 Our evaluation pipeline uses the GitHub REST API to fetch diffs, file context, and repo structure — then feeds them to an LLM for scoring (see [what_to_eval.md](what_to_eval.md)). The LLM reads code but doesn't run it.
 
-This creates a fundamental gap:
+### What Read-Only Evaluation Can Assess
+
+#### 1. Code Structure & Architecture (tree API)
+- Module separation, directory organization, dependency graph
+- Whether concerns are properly separated
+- Appropriate abstraction levels
+
+#### 2. Change Quality (diffs)
+- Atomic, focused changes vs. mixed concerns
+- Dead code cleanup
+- Edge case handling
+- Whether changes fit surrounding context
+
+#### 3. Commit Discipline (patch format)
+- Message quality, conventional commits
+- Atomic vs. kitchen-sink commits
+- Fix-to-feature ratio
+
+#### 4. Testing Habits (diffs + tree)
+- Tests written alongside features
+- Test structure and naming conventions
+- Edge case coverage patterns
+
+#### 5. Type Safety & Correctness Signals (file contents)
+- Strict mode usage, `any` avoidance
+- Error handling patterns
+- Null/undefined handling
+
+### Limitations with Vibe-Coded Output
+
+AI-generated code often **looks** structurally correct but has subtle semantic errors. The code "reads well" because the LLM that wrote it optimizes for readability, not necessarily correctness. This means read-only evaluation is more likely to be fooled by AI-written code than by human-written code.
 
 | Signal | Visible via read? | Requires execution? |
 |---|---|---|
@@ -26,45 +56,11 @@ This creates a fundamental gap:
 | Dependency resolution | No | Yes |
 | Build pipeline validity | No | Yes |
 
-### Vibe Coding Makes This Harder
+### Compensation Strategies (Closing the Read-Only Gap)
 
-AI-generated code often **looks** structurally correct but has subtle semantic errors. The code "reads well" because the LLM that wrote it optimizes for readability, not necessarily correctness. This means read-only evaluation is more likely to be fooled by AI-written code than by human-written code.
+These techniques approximate execution results without actually running code — how far can read-only get?
 
----
-
-## What Read-Only (LLM) Evaluation Can Assess
-
-### 1. Code Structure & Architecture (tree API)
-- Module separation, directory organization, dependency graph
-- Whether concerns are properly separated
-- Appropriate abstraction levels
-
-### 2. Change Quality (diffs)
-- Atomic, focused changes vs. mixed concerns
-- Dead code cleanup
-- Edge case handling
-- Whether changes fit surrounding context
-
-### 3. Commit Discipline (patch format)
-- Message quality, conventional commits
-- Atomic vs. kitchen-sink commits
-- Fix-to-feature ratio
-
-### 4. Testing Habits (diffs + tree)
-- Tests written alongside features
-- Test structure and naming conventions
-- Edge case coverage patterns
-
-### 5. Type Safety & Correctness Signals (file contents)
-- Strict mode usage, `any` avoidance
-- Error handling patterns
-- Null/undefined handling
-
----
-
-## Compensation Strategies (Closing the Read-Only Gap)
-
-### 1. CI Status as Execution Proxy
+#### 1. CI Status as Execution Proxy
 The highest-value addition — read CI results without running anything:
 ```
 GET /repos/{owner}/{repo}/commits/{ref}/check-runs
@@ -72,26 +68,26 @@ GET /repos/{owner}/{repo}/commits/{ref}/status
 ```
 This tells you if the author's commits pass the repo's own quality gates. The repo's infrastructure already ran the tests.
 
-### 2. Cross-Reference Consistency Checks
+#### 2. Cross-Reference Consistency Checks
 The LLM can verify internal consistency without execution:
 - Import paths vs. actual file tree
 - Test files referencing functions that exist in source
 - CI config paths matching project structure
 
-### 3. Pattern-Based Smell Detection
+#### 3. Pattern-Based Smell Detection
 Strong proxies for "this code doesn't work":
 - Nonexistent import paths
 - Wrong API argument counts/types
 - Copy-paste errors, unreachable code
 - Configuration contradictions
 
-### 4. Temporal Analysis Across Commits
+#### 4. Temporal Analysis Across Commits
 Read the commit sequence, not just individual snapshots:
 - Does the author fix their own bugs quickly?
 - Do they iterate or ship-and-forget?
 - Are fix commits addressing self-introduced issues?
 
-### 5. PR Review Signals (when available)
+#### 5. PR Review Signals (when available)
 ```
 GET /repos/{owner}/{repo}/pulls/{number}/reviews
 GET /repos/{owner}/{repo}/pulls/{number}/comments
@@ -102,15 +98,101 @@ GET /repos/{owner}/{repo}/pulls/{number}/comments
 
 ---
 
-## AI-Authorship Detection Signals
+## Part 2: Agent Evaluation (with Tools)
 
-When evaluating repos in the vibe coding era, these signals help identify AI-generated code:
+When read-only evaluation hits its ceiling — especially with vibe-coded output that looks correct but isn't — agent evaluation closes the gap by actually executing code.
+
+### What Agent Evaluation Unlocks
+
+#### 1. Compilation & Build Verification
+The most basic execution check: does the code compile?
+- Run the project's build command and capture exit codes + error output
+- Detect dependency resolution failures (missing packages, version conflicts)
+- Catch type errors that read-only analysis might miss (complex generics, cross-module type flow)
+
+#### 2. Test Execution
+Move from "tests exist" to "tests pass":
+- Run the test suite and capture pass/fail results
+- Identify flaky tests vs. genuine failures
+- Measure actual code coverage (not just whether test files exist)
+- Detect tests that pass trivially (e.g., empty assertions, mocked-out everything)
+
+#### 3. Runtime Behavior Analysis
+Catch issues invisible to static reading:
+- Deadlocks and race conditions under concurrent execution
+- Memory leaks and resource handle exhaustion
+- Infinite loops and runaway recursion
+- Incorrect error propagation (swallowed exceptions, wrong error types)
+
+#### 4. Static Analysis Tooling
+Run the project's own linters and analyzers:
+- ESLint, Clippy, mypy, etc. with the project's configuration
+- Security scanners (npm audit, cargo audit, Snyk)
+- Complexity metrics (cyclomatic complexity, cognitive complexity)
+- Dead code detection via tree-shaking / unused export analysis
+
+#### 5. Integration & Environment Checks
+Verify the code works in context:
+- Database migrations apply cleanly
+- API contracts match between services
+- Environment variable usage matches `.env.example` or config schemas
+- Docker builds succeed and containers start
+
+### Infrastructure Requirements
+
+Agent evaluation requires significantly more setup than read-only:
+
+| Requirement | Purpose |
+|---|---|
+| **Sandboxed execution environment** | Isolate untrusted code (containers, VMs, or secure runtimes) |
+| **Language-specific toolchains** | Node.js, Rust, Python, Go, etc. per repo |
+| **Dependency installation** | `npm install`, `pip install`, `cargo build` before running |
+| **Time limits & resource caps** | Prevent runaway builds from consuming infrastructure |
+| **Artifact capture** | Collect build output, test results, coverage reports |
+
+This is the core tradeoff: agent evaluation gives you ground truth about correctness, but at the cost of infrastructure complexity, execution time, and security surface area.
+
+### AI-Authorship Detection Signals
+
+When evaluating repos in the vibe coding era, these signals help identify AI-generated code (available to both modes, but agent mode can verify claims):
 
 - **Co-authored-by markers** — explicit attribution (e.g., `Co-Authored-By: Claude`)
 - **Commit message style** — AI messages tend to be overly structured with bullet lists; human messages reference context and people
 - **Code style uniformity** — AI output is unnaturally consistent; human code has personal quirks and evolves over time
 - **Feature-to-test ratio** — vibe coders tend to skip tests because the AI output looks correct
 - **Dependency bloat** — AI tends to add libraries for things that could be a few lines of code
+
+---
+
+## Part 3: Choosing Between Them
+
+### When Read-Only Is Sufficient
+
+Read-only evaluation works well for assessing **engineering discipline and judgment** — the human layer on top of AI-generated code:
+
+- Evaluating commit discipline, PR hygiene, and code organization
+- Detecting whether an engineer curates AI output or ships it raw
+- Screening large numbers of candidates or repos quickly (scales linearly with API calls, not compute)
+- Assessing architectural thinking and design decisions
+- Situations where CI status is available as an execution proxy
+
+### When You Need Agent Evaluation
+
+Agent evaluation becomes necessary when **correctness matters more than process**:
+
+- The codebase has no CI pipeline (no execution proxy available)
+- You need to verify that AI-generated code actually works, not just looks right
+- Runtime behavior is the primary concern (performance, concurrency, resource management)
+- The evaluation must produce a binary "this works / this doesn't" verdict
+- You're calibrating read-only signals against ground truth (do repos that "read well" also compile and pass tests?)
+
+### Hybrid Approach
+
+The most practical architecture uses both:
+
+1. **Read-only as the first pass** — cheap, fast, scales to many repos. Produces scores for discipline, architecture, and curation.
+2. **Agent evaluation as targeted verification** — run only on candidates or repos that pass the read-only threshold. Confirms that high-scoring code actually works.
+3. **Calibration loop** — periodically run agent evaluation on read-only-scored repos to check whether read-only scores correlate with actual correctness. If they diverge, tune the read-only prompts.
 
 ---
 
@@ -135,11 +217,11 @@ The strongest single signal. Walk the commit sequence and detect self-fix chains
 
 **Data source:** commit diffs grouped by file path + author, compared via line overlap or function-level AST matching.
 
-**Connection to existing evaluation:** Extends "Temporal Analysis Across Commits" (Compensation Strategy #4) with a concrete, computable metric.
+**Evaluation mode:** Read-only (deterministic). Extends Compensation Strategy #4 (Temporal Analysis) with a concrete, computable metric.
 
 ### 2. Test Intent (LLM-assisted)
 
-The existing "Testing Habits" section (What Read-Only Evaluation Can Assess #4) checks whether tests exist alongside features. This misses the subtler junior pattern: AI-generated tests that only cover the happy path.
+Checking whether tests exist alongside features misses the subtler junior pattern: AI-generated tests that only cover the happy path.
 
 **How to measure:** Feed the LLM:
 - The feature diff (what changed)
@@ -152,11 +234,11 @@ The existing "Testing Habits" section (What Read-Only Evaluation Can Assess #4) 
 - **Failure mode coverage** — tests verify error handling, timeouts, concurrent access, malformed data (strong senior signal)
 - **Implementation coupling** — tests assert internal implementation details that break on refactor (junior signal, even though it looks thorough)
 
-**Connection to existing evaluation:** Replaces the binary "tests exist / tests don't exist" check with a quality spectrum. Feeds into the LLM scoring prompt as a pre-computed signal.
+**Evaluation mode:** Read-only (LLM-assisted). Replaces the binary "tests exist / tests don't exist" check with a quality spectrum.
 
 ### 3. Curation Signals (deterministic, no LLM needed)
 
-The existing "AI-Authorship Detection Signals" section identifies when code is AI-generated but doesn't detect whether the human **curated** that output. This is the critical gap — a senior using AI has high AI authorship AND high curation. A junior using AI has high AI authorship and zero curation.
+Detecting AI authorship isn't enough — the critical question is whether the human **curated** that output. A senior using AI has high AI authorship AND high curation. A junior using AI has high AI authorship and zero curation.
 
 **Signals to detect:**
 - **Revert-then-redo** — a revert commit followed by a different implementation of the same feature (evidence of rejection)
@@ -185,6 +267,8 @@ GET /repos/{owner}/{repo}/pulls/{number}/events
 - **Senior signal:** curation score > 0 (some evidence of filtering AI output)
 - **Junior signal:** curation score ≈ 0 with high AI authorship (accepting everything)
 
+**Evaluation mode:** Read-only (deterministic).
+
 ### 4. Scope Control (deterministic, no LLM needed)
 
 Seniors scope their prompts and commits tightly. Juniors accept bulk AI output that mixes concerns.
@@ -202,7 +286,7 @@ Seniors scope their prompts and commits tightly. Juniors accept bulk AI output t
 
 Also check: does a single commit contain both feature code AND unrelated refactoring, formatting, or dependency changes? AI agents frequently produce these mixed commits, and juniors ship them as-is.
 
-**Connection to existing evaluation:** Makes "Atomic vs. kitchen-sink commits" (What Read-Only Evaluation Can Assess #3) into a measurable metric instead of a subjective LLM judgment.
+**Evaluation mode:** Read-only (deterministic). Makes "atomic vs. kitchen-sink commits" into a measurable metric.
 
 ### 5. First-Push CI Pass Rate (deterministic, no LLM needed)
 
@@ -218,7 +302,7 @@ For each PR, check whether the **first** push passes CI. Subsequent pushes that 
 - **Senior signal:** first-push pass rate > 80%
 - **Junior signal:** first-push pass rate < 50% with multiple fix pushes before green
 
-**Connection to existing evaluation:** Extends "CI Status as Execution Proxy" (Compensation Strategy #1) from a binary pass/fail to a temporal pattern.
+**Evaluation mode:** Read-only (deterministic). Extends CI Status as Execution Proxy from a binary pass/fail to a temporal pattern.
 
 ### Integrating These Signals into the Evaluation Pipeline
 
@@ -255,17 +339,6 @@ Run the full signal extraction pipeline against `eval_test_junior` and `eval_tes
 | First-push CI pass rate | < 50% | > 80% |
 
 If these signals don't clearly separate the two baselines, the analyzers need tuning before running against real repos.
-
----
-
-## Two Evaluation Modes
-
-| Mode | Tools | Strengths | Limitations |
-|---|---|---|---|
-| **LLM (read-only)** | Diffs, file contents, tree structure, CI status, PR metadata | Scalable, no infrastructure needed, assesses design and discipline | Cannot verify runtime correctness |
-| **Agent (with execution)** | All of the above + compile + test execution + static analysis | Verifies actual correctness, catches runtime issues | Requires infrastructure, slower, harder to scale |
-
-The LLM mode is sufficient for evaluating engineering discipline, architectural thinking, and code quality patterns. The agent mode is needed when you must verify that the code actually works — which matters more in the vibe coding era where "looks correct" is no longer a reliable proxy for "is correct."
 
 ---
 
