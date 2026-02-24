@@ -5,6 +5,21 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  turbopack: {
+    rules: {
+      '*.md': {
+        loaders: ['raw-loader'],
+        as: '*.js',
+      },
+    },
+  },
+  webpack: (config) => {
+    config.module.rules.push({
+      test: /\.md$/,
+      type: 'asset/source',
+    });
+    return config;
+  },
 };
 
 export default nextConfig;

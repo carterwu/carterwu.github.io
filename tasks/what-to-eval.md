@@ -1,7 +1,5 @@
 # How to Fetch Repo Data for Evaluation
 
-Reference: https://alidocs.dingtalk.com/i/spaces/1nRzl5BRdA23dXbx/overview?rnd=0.7540390410703759
-
 ---
 
 ## Problem
@@ -146,17 +144,17 @@ GET /repos/{owner}/{repo}/contents/{directory_path}
 ### Combined Pattern
 
 ```plaintext
-# 1. Get diff
+1. Get diff
 GET /repos/{owner}/{repo}/commits/{ref}
 Headers: Accept: application/vnd.github.v3.diff
 
-# 2. Get tree structure for context
+2. Get tree structure for context
 GET /repos/{owner}/{repo}/git/trees/{commit_sha}?recursive=1
 
-# 3. Get specific file contents
+3. Get specific file contents
 GET /repos/{owner}/{repo}/contents/{path}?ref={commit_sha}
 
-# 4. Get related files context
+4. Get related files context
 GET /repos/{owner}/{repo}/contents/{directory_path}
 ```
 

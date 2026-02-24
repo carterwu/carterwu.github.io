@@ -214,6 +214,7 @@ a {
 .prose h1, .prose h2, .prose h3, .prose h4 {
   font-family: var(--font-fraunces), Georgia, serif;
   font-weight: 700;
+  scroll-margin-top: 5rem;
 }
 
 .prose img {
