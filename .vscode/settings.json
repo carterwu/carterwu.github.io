@@ -1,0 +1,15 @@
+{
+  "files.associations": {
+    "*.pptx": "ooxml",
+    "*.pptm": "ooxml",
+    "*.potx": "ooxml",
+    "*.ppsx": "ooxml",
+    "*.sldx": "ooxml"
+  },
+  "ooxmlViewer.preserveComments": true,
+  "ooxmlViewer.maximumOoxmlFileSizeBytes": 100000000,
+  "editor.formatOnSave": true,
+  "[xml]": {
+    "editor.defaultFormatter": "redhat.vscode-xml"
+  }
+}
