@@ -19,11 +19,19 @@ An LLM reads code — it doesn't run it. For LLM-based evaluation, we only need 
 
 | Input | What it reveals |
 |---|---|
-| Diffs | Code change quality, reasoning, refactoring skill, test coverage habits |
-| Full files of changed code | Whether changes fit surrounding code style, module understanding |
-| Repo tree structure | Project organization, separation of concerns, config hygiene |
+| Commit messages + diffs | Primary evidence of the author's actual work, reasoning, refactoring skill, test habits |
+| Full files containing changed code | Background for whether changes fit surrounding code style and module design |
+| Directly related files | Background for imports, schemas, shared utilities, configs, interfaces, and dependency relationships |
+| Repo tree structure | Background for project organization and locating related files |
 
-A full clone is unnecessary for this purpose. We just need diffs + file context.
+A full clone is unnecessary for this purpose. We need selected commit evidence plus enough nearby code context to interpret that evidence.
+
+Important distinction:
+
+- **Evidence:** selected commit messages, selected commit diffs, and checker results scoped to those commits/files.
+- **Background:** repo files, related files, and repo structure. These help the LLM understand the code, but they should not independently prove the author's engineering level.
+
+This matters because repo files may come from outside the evaluation range or from another source. For author evaluation, scores should be based on what the author changed in the selected commits.
 
 ---
 
@@ -135,6 +143,14 @@ GET /repos/{owner}/{repo}/git/trees/{tree_sha}?recursive=1
 
 Step 3 — Get specific file contents (Contents API or Blobs API as needed).
 
+Default file context:
+
+- Files that contain diffs
+- Direct imports or dependencies of changed files
+- Shared schemas, interfaces, config files, or utilities referenced by changed files
+- Nearby tests for the changed modules
+- Root-level project files only when relevant to the commit, for example `pyproject.toml`, `package.json`, `Dockerfile`, CI config, or README sections
+
 Step 4 (optional) — Get related files context:
 
 ```plaintext
@@ -162,7 +178,7 @@ Optionally use the **GraphQL API** for richer PR/review metadata and fewer round
 
 ### Level 4: Diff + Latest Repo Complete Files at `end_sha`
 
-This is the richest LLM evaluation input:
+This is the richest LLM input, but it is not always the fairest evaluation input.
 
 1. Commit diffs and metadata for the selected range:
 
@@ -184,7 +200,24 @@ git checkout --detach FETCH_HEAD
 
 Then walk the checked-out working tree and include text source/config/docs files, excluding dependency directories, vendor code, generated/cache/build outputs, obvious secret config files, large files, and binary/media/data files.
 
-Compared with Level 3, this gives the LLM the entire current codebase shape at the evaluation endpoint, not only files touched by the commits. The model can judge whether the selected diffs fit the architecture, naming conventions, config layout, tests, and surrounding implementation at `end_sha`.
+Compared with Level 3, this gives the LLM the entire current codebase shape at the evaluation endpoint, not only files touched by the commits. That can help when evaluating the whole repository, a project milestone, or whether a feature works as an integrated system.
+
+However, for **author evaluation over a selected commit range**, complete repo files should be treated as **background only**, not scoring evidence. The LLM must not give credit or penalties based on unrelated files that the author did not change in the evaluated range.
+
+Recommended default:
+
+- Use Level 3 for author/range evaluation.
+- Load changed files plus directly related dependency/reference files.
+- Keep full repo snapshots optional and label them as background.
+- Require scoring rationale to cite commit SHA, commit message, and diff-visible file paths/changes.
+
+Trade-off:
+
+| Context scope | Benefit | Risk | Best use |
+|---|---|---|---|
+| Changed files only | Fairest and cheapest | May miss architecture/interface context | Small, self-contained changes |
+| Changed files + related files | Balanced context and fairness | Requires dependency/reference discovery | Default author evaluation |
+| Complete filtered repo snapshot | Maximum project context | Can bias the LLM toward judging the whole repo instead of the selected commits | Whole-repo or milestone evaluation |
 
 ---
 
