@@ -160,6 +160,32 @@ GET /repos/{owner}/{repo}/contents/{directory_path}
 
 Optionally use the **GraphQL API** for richer PR/review metadata and fewer round-trips.
 
+### Level 4: Diff + Latest Repo Complete Files at `end_sha`
+
+This is the richest LLM evaluation input:
+
+1. Commit diffs and metadata for the selected range:
+
+```plaintext
+start_sha..end_sha
+```
+
+2. A complete filtered snapshot of the repository files checked out at `end_sha`.
+
+Use Git to fetch the target commit snapshot:
+
+```bash
+mkdir repo && cd repo
+git init
+git remote add origin <repository-url>
+git fetch --depth 1 origin <end_sha>
+git checkout --detach FETCH_HEAD
+```
+
+Then walk the checked-out working tree and include text source/config/docs files, excluding dependency directories, vendor code, generated/cache/build outputs, obvious secret config files, large files, and binary/media/data files.
+
+Compared with Level 3, this gives the LLM the entire current codebase shape at the evaluation endpoint, not only files touched by the commits. The model can judge whether the selected diffs fit the architecture, naming conventions, config layout, tests, and surrounding implementation at `end_sha`.
+
 ---
 
 ## Files to Exclude
