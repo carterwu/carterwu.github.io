@@ -6,6 +6,7 @@ import { post as vibeCoding } from './vibe-coding';
 import { post as llmContext } from './llm-context';
 import { post as overviewVsTrajectory } from './overview-vs-trajectory';
 import { post as aiHuman } from './ai-human';
+import { post as gitIdentityEvidence } from './git-identity-evidence';
 
 export interface BlogPost {
   slug: string;
@@ -24,6 +25,7 @@ const allPosts: BlogPost[] = [
   llmContext,
   overviewVsTrajectory,
   aiHuman,
+  gitIdentityEvidence,
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
