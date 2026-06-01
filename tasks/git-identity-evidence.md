@@ -1,214 +1,338 @@
-# Git Identity Evidence for GitHub and Gitee Evaluation
+# Git Identity Evidence: GitHub and Gitee Commit Fields
 
-## Q1: Can one GitHub or Gitee account use several Git author names or emails?
+## Typical Commit Example
 
-Yes. A single platform account can be associated with commits made from different machines using different local Git configs.
+This Gitee API response is a good example because the raw Git identity exists, but the platform account identity is unresolved:
 
-For example:
-
-```bash
-# Machine A
-git config --global user.name "Carter Wu"
-git config --global user.email "personal@example.com"
-
-# Machine B
-git config --global user.name "Carter Wu"
-git config --global user.email "work@example.com"
+```json
+{
+  "url": "https://gitee.com/api/v5/repos/zgcai/oscanner/commits/851913683009e0e75f924daa7b625044dba872a9",
+  "sha": "851913683009e0e75f924daa7b625044dba872a9",
+  "html_url": "https://gitee.com/zgcai/oscanner/commit/851913683009e0e75f924daa7b625044dba872a9",
+  "comments_url": "https://gitee.com/api/v5/repos/zgcai/oscanner/commits/851913683009e0e75f924daa7b625044dba872a9/comments",
+  "commit": {
+    "author": {
+      "name": "CarterWu",
+      "date": "2026-06-01T14:26:22+08:00",
+      "email": "nkwuyanbiao@163.com"
+    },
+    "committer": {
+      "name": "CarterWu",
+      "date": "2026-06-01T14:26:22+08:00",
+      "email": "nkwuyanbiao@163.com"
+    },
+    "message": "feat: improve commit author matching",
+    "tree": {
+      "sha": "32750aff3fe707e83f4aa7f37ae0263e563d8dbc",
+      "url": "https://gitee.com/api/v5/repos/zgcai/oscanner/git/trees/32750aff3fe707e83f4aa7f37ae0263e563d8dbc"
+    }
+  },
+  "author": null,
+  "committer": null,
+  "parents": [
+    {
+      "sha": "8823336627926894835633ecd6a867554e8593ad",
+      "url": "https://gitee.com/api/v5/repos/zgcai/oscanner/commits/8823336627926894835633ecd6a867554e8593ad"
+    }
+  ]
+}
 ```
 
-This can still resolve to one GitHub or Gitee account if those emails are bound to the same platform account.
+Key observation:
 
-The important point is that Git stores only free-form name and email strings. GitHub and Gitee then try to map those strings to a real platform account.
+```text
+commit.author    exists: raw Git author metadata
+commit.committer exists: raw Git committer metadata
+author           null: platform did not resolve the Git author to a Gitee account
+committer        null: platform did not resolve the Git committer to a Gitee account
+```
 
-## Q2: Is `commit.author` more important than `commit.committer` for contribution?
+## Q1: What is the difference between `author`, `commit.author`, and `commit.committer`?
 
-Usually yes for coding contribution, but not always for overall engineering contribution.
+They are different layers of identity.
 
-- `commit.author` means the person who originally wrote the change.
-- `commit.committer` means the person, tool, or system that applied that commit object to the repository.
-
-For capability evaluation, they should be interpreted separately:
-
-| Field | Main meaning | Best used for |
+| Field | Layer | Meaning |
 |---|---|---|
-| `commit.author` | Original writer of the change | Implementation, code ownership, bug fixing, feature work |
-| `commit.committer` | Person or system that applied the commit | Integration, rebasing, cherry-picking, release work, maintenance |
+| `commit.author` | Raw Git metadata | The person recorded by Git as the original writer of the change |
+| `commit.committer` | Raw Git metadata | The person/tool recorded by Git as the one who applied the commit object |
+| `author` | Platform account mapping | GitHub/Gitee account resolved from `commit.author.email`, or `null` |
+| `committer` | Platform account mapping | GitHub/Gitee account resolved from `commit.committer.email`, or `null` |
 
-If Alice writes a patch and Bob applies it, the commit may look like this:
-
-```text
-Author:    Alice <alice@example.com>
-Committer: Bob <bob@example.com>
-```
-
-That should not be read as Bob writing Alice's code. It means Alice is the implementation signal, while Bob is the integration signal.
-
-## Q3: Can someone use a fake email in Git config and push it to GitHub or Gitee?
-
-Yes, technically. Git itself does not verify that `user.email` is real or belongs to the person making the commit.
-
-For example:
-
-```bash
-git config user.name "Some Name"
-git config user.email "fake@example.com"
-git commit -m "Example commit"
-git push
-```
-
-The commit can still exist in repository history if the authenticated pushing account has permission to push.
-
-However, the platform may not attribute that commit to the pusher. GitHub and Gitee generally need the commit email to match an email bound or verified on the platform account.
-
-## Q4: What happens if the raw commit email is fake, old, or not bound to any account?
-
-Usually the commit remains valid, but account attribution becomes weak or missing.
-
-Possible outcomes:
-
-- The commit appears in repository history.
-- It may not count toward the user's contribution graph.
-- It may not link to the user's GitHub or Gitee profile.
-- The platform account field may be `null` or unresolved.
-- If the email belongs to another verified account, it may be attributed to that other account.
-- If signed commits, verified authors, or branch protection rules are required, the commit may be rejected or shown as unverified.
-
-Using someone else's email or name intentionally is misleading and should not be treated as reliable evidence.
-
-## Q5: Does Gitee behave the same as GitHub for these attribution rules?
-
-Mostly yes.
-
-Gitee also depends on the relationship between raw Git metadata and the platform account. If local Git email does not match the email configured on Gitee, contributions may not be counted or may show as an unknown/visitor identity.
-
-So the same practical rule applies:
+In short:
 
 ```text
-The authenticated account that pushes the commit is not enough by itself.
-The commit email should match an email bound to the platform account.
+commit.author / commit.committer = data stored inside the Git commit object
+author / committer               = GitHub/Gitee's best-effort account mapping
 ```
 
-For privacy, prefer the platform's no-reply/private email feature instead of inventing a fake email.
+## Q2: Why are `author` and `committer` null in the example?
 
-## Q6: Should evaluation use raw `commit.author` / `commit.committer`, or GitHub/Gitee account identity?
+Because Gitee could not map the raw Git email to a Gitee account in that API response.
 
-Use the platform-resolved account identity as the primary identity signal, and keep raw Git metadata as supporting evidence.
+The raw Git metadata says:
 
-Recommended priority:
+```text
+commit.author.email    = nkwuyanbiao@163.com
+commit.committer.email = nkwuyanbiao@163.com
+```
 
-1. Platform-resolved account ID/login.
-2. Verified or bound email associated with that account.
-3. Raw Git `commit.author` and `commit.committer` metadata.
-4. Push actor or event actor.
+But the platform-level fields say:
 
-Raw Git fields are easy to misconfigure or fake. Platform-resolved accounts are not perfect, but they are usually safer for attribution.
+```text
+author    = null
+committer = null
+```
 
-## Q7: Can the commit's GitHub or Gitee account field be `null`?
+That means the commit is valid, but Gitee did not expose a resolved platform user for that author or committer.
 
-Yes. This is normal.
+Common reasons:
 
-A GitHub API commit response, for example, can contain both raw Git metadata and resolved platform account objects:
+- The email is not bound to any Gitee account.
+- The email is bound but not verified or not visible for this API mapping.
+- The email belongs to a different platform account.
+- The commit was pushed by someone else or imported from another system.
+- The platform account exists, but Gitee did not resolve it in this response.
+
+## Q3: In one commit, can the GitHub/Gitee account `author` be null?
+
+Yes.
+
+The platform account `author` can be `null` even when `commit.author.name` and `commit.author.email` exist.
+
+Example meaning:
 
 ```json
 {
   "commit": {
     "author": {
-      "name": "Alice",
-      "email": "alice@example.com"
-    },
-    "committer": {
-      "name": "Bob",
-      "email": "bob@example.com"
+      "name": "CarterWu",
+      "email": "nkwuyanbiao@163.com"
     }
   },
-  "author": null,
-  "committer": {
-    "login": "bob"
-  }
+  "author": null
 }
 ```
 
 This means:
 
-- `commit.author.email` is raw Git metadata.
-- `author` is the platform-resolved account object.
-- `author: null` means the platform did not map the raw author email to a user account.
-- `committer.login: "bob"` means the committer did resolve to a platform account.
+```text
+Git knows the raw author name/email.
+GitHub/Gitee did not map that raw author email to a platform account.
+```
 
-## Q8: Why can the platform account field be `null`?
+So for data collection, treat platform `author` as optional.
 
-Common reasons:
+## Q4: In one commit, can the platform account email be null?
 
-- The email is not added or verified on any platform account.
-- The email is fake, mistyped, old, or no longer bound.
-- The user used another machine with different `git config user.email`.
-- The commit was imported from another system such as GitLab, SVN, Gerrit, or mailing-list patches.
-- The commit was made by automation with an unlinked email.
-- A GitHub no-reply email is pushed to Gitee, or a Gitee no-reply email is pushed to GitHub.
-- The account was deleted, renamed, suspended, private, or hidden by enterprise settings.
-- The platform API does not expose the mapping in that response.
-- Platform indexing or cache has not caught up yet.
+Yes.
 
-A `null` account does not mean the commit is invalid. It only means the platform did not resolve the raw Git identity to a platform user.
+Even when GitHub/Gitee resolves `author` to a platform account, the account email may be hidden, omitted, or unavailable through the API.
 
-## Q9: How should engineering capability evidence be modeled?
+Do not assume this exists:
 
-Do not collapse everything into one raw commit count. Store separate evidence dimensions.
+```text
+author.email
+committer.email
+```
 
-Suggested model:
+For platform identity, prefer stable account fields when available:
+
+```text
+author.id
+author.login
+author.username
+committer.id
+committer.login
+committer.username
+```
+
+The raw Git emails are here instead:
+
+```text
+commit.author.email
+commit.committer.email
+```
+
+## Q5: In one commit, can `commit.author.name` and `commit.author.email` be null?
+
+Normally, no.
+
+For a normal Git commit, the raw commit object contains an author line with name, email, and timestamp. GitHub/Gitee APIs usually return these as strings:
+
+```text
+commit.author.name
+commit.author.email
+commit.author.date
+```
+
+But two cautions matter:
+
+1. The values are not verified. They can be fake, old, mistyped, or from another machine.
+2. Very unusual or malformed imported commits may have empty or strange values, so parsers should still handle missing/empty values defensively.
+
+Practical rule:
+
+```text
+Do not expect commit.author to identify a real platform user.
+Expect it to identify what the Git commit claims.
+```
+
+## Q6: In one commit, can `commit.committer.name` and `commit.committer.email` be null?
+
+Normally, no.
+
+For a normal Git commit, the raw commit object also contains a committer line with name, email, and timestamp. GitHub/Gitee APIs usually return:
+
+```text
+commit.committer.name
+commit.committer.email
+commit.committer.date
+```
+
+But, like `commit.author`, these values are raw Git metadata and are not proof of a real account.
+
+## Q7: Why should we use email rather than author name to gather user contributions in repos?
+
+Because raw author names are too weak for identity matching.
+
+Names have many problems:
+
+- Many people can share the same name.
+- One person can use many names, such as `CarterWu`, `Carter Wu`, or `carter`.
+- Names are easy to fake.
+- Names often change across machines or companies.
+- Names are not the primary field GitHub/Gitee use for commit account mapping.
+
+Emails are better than names because GitHub/Gitee usually map raw commits to platform accounts through the commit email.
+
+However, the best identity key is still the platform account ID/login when available:
+
+```text
+Best:      platform author/committer id or login
+Fallback:  raw Git email
+Weakest:   raw Git name
+```
+
+So the recommended matching order is:
+
+1. Use resolved GitHub/Gitee account ID/login if `author` or `committer` is not null.
+2. If no platform account is resolved, use `commit.author.email` or `commit.committer.email` as fallback evidence.
+3. Use `commit.author.name` or `commit.committer.name` only as weak supporting evidence.
+
+## Q8: Should contribution evaluation use `commit.author` or `commit.committer`?
+
+Use both, but for different meanings.
+
+| Field | Evaluation perspective |
+|---|---|
+| `commit.author` | Implementation evidence: who originally wrote the code/change |
+| `commit.committer` | Integration evidence: who applied, rebased, cherry-picked, or committed the change |
+| Platform `author` | Higher-confidence implementation identity when resolved |
+| Platform `committer` | Higher-confidence integration identity when resolved |
+
+For engineering capability evaluation:
+
+```text
+Coding contribution      -> prefer platform author, fallback to commit.author.email
+Maintenance contribution -> prefer platform committer, fallback to commit.committer.email
+Review/collaboration     -> use PR reviews, comments, issues, and merge events
+```
+
+Do not collapse all of these into one raw commit count.
+
+## Q9: If the authenticated user pushes a commit, does that prove they are the author?
+
+No.
+
+The account that pushes the commit is not necessarily the same as:
+
+```text
+commit.author
+commit.committer
+platform author
+platform committer
+```
+
+Examples:
+
+- A maintainer can push a patch written by someone else.
+- A CI bot can push generated commits.
+- A user can push commits with a fake or old email.
+- A mirror/import job can push commits originally made elsewhere.
+
+Push actor is delivery evidence, not direct authorship evidence.
+
+## Q10: Are GitHub and Gitee the same in these fields?
+
+They are conceptually very similar.
+
+| Concept | GitHub | Gitee |
+|---|---|---|
+| Raw Git author | `commit.author` | `commit.author` |
+| Raw Git committer | `commit.committer` | `commit.committer` |
+| Platform author account | `author` | `author` |
+| Platform committer account | `committer` | `committer` |
+| Can platform account be null? | Yes | Yes |
+| Raw name/email verified by Git? | No | No |
+| Account mapping mainly depends on email? | Yes | Yes |
+
+Main practical difference:
+
+```text
+GitHub and Gitee may expose different account object fields,
+privacy behavior, and contribution counting details.
+```
+
+But the evaluation logic should be the same:
+
+1. Prefer platform account identity when resolved.
+2. Use raw Git email as fallback evidence.
+3. Treat raw Git name as weak evidence.
+4. Keep author and committer as separate contribution dimensions.
+
+## Q11: What data should an evaluator store for each commit?
+
+Store both raw Git metadata and platform-resolved identity.
 
 ```json
 {
-  "platform": "github",
-  "repo": "owner/repo",
-  "sha": "abc123",
-  "platform_author_login": "alice",
-  "platform_author_id": 12345,
-  "platform_committer_login": "bob",
-  "platform_committer_id": 67890,
-  "git_author_name": "Alice A.",
-  "git_author_email": "alice@company.com",
-  "git_committer_name": "Bob B.",
-  "git_committer_email": "bob@company.com",
-  "pushed_by": "carol",
+  "platform": "gitee",
+  "repo": "zgcai/oscanner",
+  "sha": "851913683009e0e75f924daa7b625044dba872a9",
+  "html_url": "https://gitee.com/zgcai/oscanner/commit/851913683009e0e75f924daa7b625044dba872a9",
+  "git_author_name": "CarterWu",
+  "git_author_email": "nkwuyanbiao@163.com",
+  "git_committer_name": "CarterWu",
+  "git_committer_email": "nkwuyanbiao@163.com",
+  "platform_author_id": null,
+  "platform_author_login": null,
+  "platform_committer_id": null,
+  "platform_committer_login": null,
   "identity_confidence": {
-    "author": "high",
-    "committer": "high"
+    "author": "medium",
+    "committer": "medium"
   }
 }
 ```
 
-Interpretation:
+Example confidence rules:
 
-| Evidence type | Preferred identity | Evaluation meaning |
-|---|---|---|
-| Implementation evidence | Platform-resolved author account | Code writing, design, debugging, ownership |
-| Integration evidence | Platform-resolved committer account | Applying patches, rebasing, merging, release maintenance |
-| Delivery evidence | PR author, merge actor, push actor | Shipping workflow and project delivery |
-| Review evidence | PR review/comment account | Code review, collaboration, mentoring, design judgment |
-| Raw metadata evidence | Git author/committer name and email | Audit trail and fallback identity matching |
-
-## Q10: How should identity confidence be assigned?
-
-A simple confidence model:
-
-| Confidence | Signals |
+| Confidence | Meaning |
 |---|---|
-| High | Platform account resolves; email is bound/verified; PR or review activity supports the same identity |
-| Medium | Raw email is known and consistent across repos/time, but platform account is missing |
-| Low | Only raw name matches; email is fake-looking, shared, outdated, or inconsistent |
+| High | Platform account resolves to a stable account ID/login |
+| Medium | Platform account is null, but raw email is known and consistent |
+| Low | Only raw name matches, or email is fake/unknown/inconsistent |
 
-For evaluation, raw Git data should not be ignored, but it should not be the primary identity key when platform account data is available.
+## Final Answer
 
-## Final Recommendation
+For GitHub/Gitee repo contribution evaluation:
 
-For GitHub and Gitee engineering evaluation:
+```text
+Do not use raw author name as the main identity key.
+Prefer platform account ID/login when available.
+Use raw Git email as fallback matching evidence.
+Use raw Git name only as weak supporting evidence.
+Separate author contribution from committer contribution.
+```
 
-1. Use platform-resolved account identity as the main attribution key.
-2. Use `commit.author` mostly for implementation evidence.
-3. Use `commit.committer` mostly for integration and maintenance evidence.
-4. Keep raw Git name/email for audit, fallback matching, and debugging.
-5. Assign confidence levels instead of assuming every commit maps cleanly to a real person.
-6. Combine commit evidence with PR reviews, issues, comments, tests, and code impact before judging engineering capability.
-
-In short: evaluate code authorship from platform-resolved author accounts when possible, evaluate maintenance from platform-resolved committer accounts, and treat raw Git metadata as useful but weak evidence.
+In the example commit, `commit.author` and `commit.committer` exist, but `author` and `committer` are null. That means the raw Git metadata is present, while Gitee did not resolve either identity to a platform account.
